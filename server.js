@@ -33,7 +33,8 @@ app.post('/api/admin-auth', (req, res) => {
     if (code === validCode) {
         res.json({ success: true, message: '관리자 인증 성공!' });
     } else {
-        res.status(401).json({ success: false, message: `올바른 관리자 코드가 아닙니다. (이번 달 힌트: sodamms${currentMonth})` });
+        // 힌트 문구 제거됨
+        res.status(401).json({ success: false, message: '올바른 관리자 코드가 아닙니다.' });
     }
 });
 
