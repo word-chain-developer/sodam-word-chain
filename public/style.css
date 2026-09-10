@@ -1,0 +1,66 @@
+body {
+    font-family: 'Pretendard', sans-serif;
+    background-color: #f0f4f8;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.container {
+    width: 100%;
+    max-width: 450px;
+}
+
+h1 {
+    text-align: center;
+    color: #2c3e50;
+    font-size: 1.5rem;
+}
+
+.card {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    margin-top: 15px;
+}
+
+.hidden { display: none; }
+
+input, select, button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 8px;
+    margin-bottom: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: #3498db;
+    color: white;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover { background-color: #2980b9; }
+
+.admin-btn { background-color: #2ecc71; }
+.admin-btn:hover { background-color: #27ae60; }
+
+.word-display {
+    font-size: 2rem;
+    font-weight: bold;
+    text-align: center;
+    background: #eef6fc;
+    padding: 20px;
+    border-radius: 8px;
+    color: #2c3e50;
+    margin: 15px 0;
+}
+
+.timer { color: #e74c3c; font-weight: bold; }
+.error { color: #e74c3c; font-size: 0.9rem; text-align: center; }
+.info { font-size: 0.85rem; color: #7f8c8d; }
