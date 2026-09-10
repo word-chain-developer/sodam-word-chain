@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>소담중학교 끝말잇기 포털</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>🏫 소담중학교 끝말잇기 포털</h1>
+
+        <!-- 로그인 섹션 -->
+        <div id="login-section" class="card">
+            <h2>학생 로그인</h2>
+            <p class="info">계정 이름은 <strong>학번(5자리) + 이름</strong> 형식만 가능합니다.</p>
+            <input type="text" id="username-input" placeholder="예: 10101홍길동">
+            <button onclick="login()">접속하기</button>
+
+            <hr>
+            <h3>🔑 관리자 인증</h3>
+            <input type="password" id="admin-code-input" placeholder="관리자 코드 (sodamms+월)">
+            <button class="admin-btn" onclick="adminAuth()">행사 개최/관리자 모드</button>
+        </div>
+
+        <!-- 게임 대기실 섹션 -->
+        <div id="lobby-section" class="card hidden">
+            <h2>🎮 대결 참가하기</h2>
+            <p>환영합니다, <span id="user-display-name"></span>님!</p>
+            
+            <div class="form-group">
+                <label>대결 방 번호:</label>
+                <input type="text" id="room-id-input" value="101">
+            </div>
+
+            <div class="form-group">
+                <label>시간 제한 설정:</label>
+                <select id="time-limit-select">
+                    <option value="5">5초 (스피드전)</option>
+                    <option value="10" selected>10초 (일반전)</option>
+                    <option value="15">15초 (초보자)</option>
+                </select>
+            </div>
+
+            <button onclick="joinGame()">입장하기</button>
+        </div>
+
+        <!-- 게임 진행 섹션 -->
+        <div id="game-section" class="card hidden">
+            <div class="game-header">
+                <div>상대방: <span id="opponent-name">대기 중...</span></div>
+                <div class="timer">⏰ 남은 시간: <span id="timer-display">10</span>초</div>
+            </div>
+
+            <div class="word-display">
+                <span id="current-word">게임 준비 중...</span>
+            </div>
+
+            <div class="turn-info" id="turn-info">상대방을 기다리는 중입니다...</div>
+
+            <div class="input-box">
+                <input type="text" id="word-input" placeholder="단어를 입력하세요" disabled>
+                <button id="send-btn" onclick="sendWord()" disabled>입력</button>
+            </div>
+            <p id="error-msg" class="error"></p>
+        </div>
+
+        <!-- 관리자 행사 개최 섹션 -->
+        <div id="admin-section" class="card hidden">
+            <h2>🏆 관리자 전용 - 교내 행사 개최</h2>
+            <div class="form-group">
+                <label>대회 이름:</label>
+                <input type="text" placeholder="예: 제1회 소담중 끝말잇기 챔피언십">
+            </div>
+            <div class="form-group">
+                <label>대회 방식:</label>
+                <select id="tournament-type">
+                    <option value="tournament">토너먼트 (강토너먼트)</option>
+                    <option value="league">리그전 (풀리그)</option>
+                </select>
+            </div>
+            <button onclick="alert('교내 대회가 성공적으로 개설되었습니다!')">대회 개설하기</button>
+            <button class="secondary-btn" onclick="location.reload()">로그아웃</button>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let myUsername = '';
+
+        async function login() {
+            const username = document.getElementById('username-input').value;
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                myUsername = username;
+                document.getElementById('user-display-name').innerText = username;
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('lobby-section').classList.remove('hidden');
+            } else {
+                alert(data.message);
+            }
+        }
+
+        async function adminAuth() {
+            const code = document.getElementById('admin-code-input').value;
+            const res = await fetch('/api/admin-auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                alert('관리자 인증되었습니다.');
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('admin-section').classList.remove('hidden');
+            } else {
+                alert(data.message);
+            }
+        }
+
+        function joinGame() {
+            const roomId = document.getElementById('room-id-input').value;
+            const timeLimit = document.getElementById('time-limit-select').value;
+
+            socket = io();
+            socket.emit('joinGame', { username: myUsername, roomId, timeLimit });
+
+            document.getElementById('lobby-section').classList.add('hidden');
+            document.getElementById('game-section').classList.remove('hidden');
+
+            socket.on('roomUpdate', (data) => {
+                const opponent = data.players.find(p => p.username !== myUsername);
+                if (opponent) {
+                    document.getElementById('opponent-name').innerText = opponent.username;
+                }
+            });
+
+            socket.on('gameStart', (data) => {
+                document.getElementById('current-word').innerText = '시작!';
+                updateTurn(data.currentTurnUser);
+            });
+
+            socket.on('timerTick', (data) => {
+                document.getElementById('timer-display').innerText = data.timeLeft;
+            });
+
+            socket.on('wordSuccess', (data) => {
+                document.getElementById('current-word').innerText = data.word;
+                document.getElementById('error-msg').innerText = '';
+                updateTurn(data.nextTurnUser);
+            });
+
+            socket.on('gameError', (msg) => {
+                document.getElementById('error-msg').innerText = msg;
+            });
+
+            socket.on('gameOver', (data) => {
+                alert(`게임 종료! 승자: ${data.winner} (${data.reason})`);
+                location.reload();
+            });
+        }
+
+        function updateTurn(currentTurnUser) {
+            const isMyTurn = currentTurnUser === myUsername;
+            document.getElementById('turn-info').innerText = isMyTurn ? '🎉 당신의 순서입니다!' : `⏳ ${currentTurnUser}님의 입력 대기 중...`;
+            document.getElementById('word-input').disabled = !isMyTurn;
+            document.getElementById('send-btn').disabled = !isMyTurn;
+            if (isMyTurn) document.getElementById('word-input').focus();
+        }
+
+        function sendWord() {
+            const input = document.getElementById('word-input');
+            if (input.value) {
+                socket.emit('submitWord', { word: input.value });
+                input.value = '';
+            }
+        }
+    </script>
+</body>
+</html>
