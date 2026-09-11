@@ -9,8 +9,10 @@ const io = new Server(server);
 app.use(express.static('public'));
 app.use(express.json());
 
-// 학번(5자리 숫자) + 이름(한글 2~5자) 검증 정규식 (예: 10101홍길동)
-const studentIdNameRegex = /^[0-9]{5}[가-힣]{2,5}$/;
+// [학번 4자리 + 이름] 정규식 검증
+// 1자리(학년: 1~3) + 2자리(반: 1~8) + 3~4자리(번호: 01~30) + 이름(한글 2~5자)
+// 올바른 예: 1101홍길동 (1학년 1반 1번), 3830이순신 (3학년 8반 30번)
+const studentIdNameRegex = /^[1-3][1-8](0[1-9]|[12][0-9]|30)[가-힣]{2,5}$/;
 
 // 1. 학생 로그인
 app.post('/api/login', (req, res) => {
@@ -18,7 +20,7 @@ app.post('/api/login', (req, res) => {
     if (!username || !studentIdNameRegex.test(username)) {
         return res.status(400).json({ 
             success: false, 
-            message: '계정 이름은 [학번5자리+이름] 형식이어야 합니다! (예: 10101홍길동)' 
+            message: '올바른 학번+이름 형식이 아닙니다! (4자리 학번: 1~3학년, 1~8반, 01~30번 / 예: 1101홍길동)' 
         });
     }
     res.json({ success: true, username });
@@ -33,13 +35,22 @@ app.post('/api/admin-auth', (req, res) => {
     if (code === validCode) {
         res.json({ success: true, message: '관리자 인증 성공!' });
     } else {
-        // 힌트 문구 제거됨
         res.status(401).json({ success: false, message: '올바른 관리자 코드가 아닙니다.' });
     }
 });
 
 // 3. 실시간 대결 방 및 소켓 관리
 let rooms = {};
+
+// 매년 3월 1일 새 학기 학번 갱신 및 방 데이터 자동 초기화 (24시간마다 검사)
+setInterval(() => {
+    const today = new Date();
+    // 3월(month === 2) 1일(date === 1) 자정에 기존 방 데이터 및 대결 기록 리셋
+    if (today.getMonth() === 2 && today.getDate() === 1) {
+        console.log(`[새 학기 개학] ${today.getFullYear()}년 3월 1일 새 학기가 시작되어 학번 및 게임 방 데이터가 초기화됩니다.`);
+        rooms = {};
+    }
+}, 1000 * 60 * 60 * 24);
 
 io.on('connection', (socket) => {
     socket.on('joinGame', ({ username, roomId, timeLimit }) => {
@@ -84,11 +95,10 @@ io.on('connection', (socket) => {
         if (!room || !room.gameStarted) return;
 
         const currentPlayer = room.players[room.currentTurn];
-        if (socket.id !== currentPlayer.id) return; // 자기 순서가 아닌 경우
+        if (socket.id !== currentPlayer.id) return;
 
         const cleanWord = word.trim();
 
-        // 첫 단어가 아니면 마지막 글자로 시작하는지 검사항목
         if (room.lastWord) {
             const lastChar = room.lastWord.slice(-1);
             if (cleanWord[0] !== lastChar) {
@@ -107,12 +117,10 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // 정상 단어 입력 성공
         room.usedWords.push(cleanWord);
         room.lastWord = cleanWord;
         clearInterval(room.timer);
 
-        // Turn 교체
         room.currentTurn = (room.currentTurn + 1) % 2;
         room.timeLeft = room.timeLimit;
 
