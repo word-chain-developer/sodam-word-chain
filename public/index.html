@@ -14,13 +14,13 @@
         <!-- 로그인 섹션 -->
         <div id="login-section" class="card">
             <h2>학생 로그인</h2>
-            <p class="info">계정 이름은 <strong>학번(5자리) + 이름</strong> 형식만 가능합니다.</p>
-            <input type="text" id="username-input" placeholder="예: 10101홍길동">
+            <p class="info">계정 이름은 <strong>학번(4자리) + 이름</strong> 형식만 가능합니다.</p>
+            <p class="info" style="margin-top:-5px; font-size:0.8rem;">(학년 1~3 / 반 1~8 / 번호 01~30 | 매년 3월 1일 새 학번 적용)</p>
+            <input type="text" id="username-input" placeholder="예: 1101홍길동">
             <button onclick="login()">접속하기</button>
 
             <hr>
             <h3>🔑 관리자 인증</h3>
-            <!-- 힌트가 들어간 placeholder 제거됨 -->
             <input type="password" id="admin-code-input" placeholder="관리자 코드를 입력하세요">
             <button class="admin-btn" onclick="adminAuth()">행사 개최/관리자 모드</button>
         </div>
